@@ -1,10 +1,17 @@
-FROM php:8.2-apache
+<?php
+$host = "bg7b1azbx9c4bjnmxvni-mysql.services.clever-cloud.com";
+$user = "u9iiujwt53caa5zg";
+$pass = "YlzWGw7nsQRZH82UKg7p";
+$db   = "bg7b1azbx9c4bjnmxvni";
+$port = 3306;
 
-# Instalamos la extensión mysqli de forma limpia
-RUN docker-php-ext-install mysqli
+// Conexión incluyendo el puerto para mayor seguridad
+$conexion = mysqli_connect($host, $user, $pass, $db, $port);
 
-# Aseguramos que los archivos se copien a la carpeta correcta del servidor
-COPY . /var/www/html/
+if (!$conexion) {
+    die("Error de conexión: " . mysqli_connect_error());
+}
 
-# Ajustamos los permisos para que Apache pueda leer tus archivos PHP y CSS
-RUN chown -R www-data:www-data /var/www/html
+// Esto es para que las tildes y la 'ñ' se vean bien en tu página
+mysqli_set_charset($conexion, "utf8");
+?>

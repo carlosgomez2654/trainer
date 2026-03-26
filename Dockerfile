@@ -1,10 +1,13 @@
 FROM php:8.2-apache
 
-# Instalamos la extensión mysqli de forma limpia
-RUN docker-php-ext-install mysqli
+# Instalamos mysqli y forzamos a que no toque la configuración de Apache
+RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
 
-# Aseguramos que los archivos se copien a la carpeta correcta
+# Copiamos tus archivos
 COPY . /var/www/html/
 
-# Ajustamos los permisos para que Apache pueda leer todo
+# Aseguramos permisos
 RUN chown -R www-data:www-data /var/www/html
+
+# Exponemos el puerto que usa Railway
+EXPOSE 80

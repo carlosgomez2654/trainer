@@ -1,52 +1,60 @@
 <?php
-    session_start();
-    // Activamos errores para ver si falta algo
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
+session_start();
+// Activamos errores para ver todo
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// --- CONFIGURACIÓN DE CONEXIÓN DIRECTA ---
+$host = "bg7b1azbx9c4bjnmxvni-mysql.services.clever-cloud.com";
+$user = "u9iiujwt53caa5zg";
+$pass = "YlzWGw7nsQRZH82UKg7p";
+$db   = "bg7b1azbx9c4bjnmxvni";
+$port = 3306;
+
+$conn = mysqli_connect($host, $user, $pass, $db, $port);
+
+if (!$conn) {
+    die("Fallo de conexión directo: " . mysqli_connect_error());
+}
+// ------------------------------------------
+
+$mensaje = "";
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $user_input = trim($_POST['usuario'] ?? '');
+    $pass_input = $_POST['contraseña'] ?? '';
+
+    // Ahora $conn SÍ o SÍ existe porque está definida arriba
+    $sql = "SELECT id, contraseña, rol FROM usuario WHERE usuario = ?";
     
-    require 'db.php'; 
+    if ($stmt = mysqli_prepare($conn, $sql)) {
+        mysqli_stmt_bind_param($stmt, "s", $user_input);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_bind_result($stmt, $db_id, $db_hash, $db_rol);
 
-    $mensaje = "";
+        if (mysqli_stmt_fetch($stmt)) {
+            if (password_verify($pass_input, $db_hash)) {
+                $_SESSION['usuario'] = $user_input;
+                $_SESSION['id'] = $db_id;
+                $_SESSION['rol'] = $db_rol;
 
-    if($_SERVER["REQUEST_METHOD"] == "POST"){
-        $usuario = trim($_POST['usuario']);
-        $pass_post = $_POST['contraseña']; // Lo que viene del formulario
-
-        // IMPORTANTE: Si en tu base de datos la columna NO tiene la ñ, 
-        // cambia "contraseña" por "password" abajo.
-        $sql = "SELECT id, contraseña, rol FROM usuario WHERE usuario = ?";
-        
-        if ($stmt = mysqli_prepare($conn, $sql)) {
-            mysqli_stmt_bind_param($stmt, "s", $usuario);
-            mysqli_stmt_execute($stmt);
-            
-            // Usamos nombres de variables distintos para no confundir
-            mysqli_stmt_bind_result($stmt, $db_id, $db_hash, $db_rol);
-
-            if(mysqli_stmt_fetch($stmt)){
-                // Verificamos si la clave coincide
-                if(password_verify($pass_post, $db_hash)){
-                    $_SESSION['usuario'] = $usuario;
-                    $_SESSION['id'] = $db_id;
-                    $_SESSION['rol'] = $db_rol; 
-
-                    if ($db_rol == "entrenador") {
-                        header("Location: panel_entrenador.php");
-                    } else {
-                        header("Location: index.php");
-                    }
-                    exit();
+                if ($db_rol == "entrenador") {
+                    header("Location: panel_entrenador.php");
                 } else {
-                    $mensaje = "Contraseña incorrecta.";
+                    header("Location: index.php");
                 }
+                exit();
             } else {
-                $mensaje = "El usuario no existe.";
+                $mensaje = "Contraseña incorrecta.";
             }
-            mysqli_stmt_close($stmt);
         } else {
-            die("Error en la consulta: " . mysqli_error($conn));
+            $mensaje = "El usuario no existe.";
         }
+        mysqli_stmt_close($stmt);
+    } else {
+        die("Error en la base de datos: " . mysqli_error($conn));
     }
+}
 ?>
 
 <!DOCTYPE html>

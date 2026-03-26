@@ -1,34 +1,50 @@
 <?php
     session_start();
+    // Activamos errores para ver si falta algo
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+    
     require 'db.php'; 
 
     $mensaje = "";
 
     if($_SERVER["REQUEST_METHOD"] == "POST"){
         $usuario = trim($_POST['usuario']);
-        $contraseña = $_POST['contraseña'];
+        $pass_post = $_POST['contraseña']; // Lo que viene del formulario
 
+        // IMPORTANTE: Si en tu base de datos la columna NO tiene la ñ, 
+        // cambia "contraseña" por "password" abajo.
         $sql = "SELECT id, contraseña, rol FROM usuario WHERE usuario = ?";
         
-        $stmt = mysqli_prepare($conn, $sql);
-        mysqli_stmt_bind_param($stmt, "s", $usuario);
-        mysqli_stmt_execute($stmt);
-        
-        mysqli_stmt_bind_result($stmt, $id, $hash, $rol);
+        if ($stmt = mysqli_prepare($conn, $sql)) {
+            mysqli_stmt_bind_param($stmt, "s", $usuario);
+            mysqli_stmt_execute($stmt);
+            
+            // Usamos nombres de variables distintos para no confundir
+            mysqli_stmt_bind_result($stmt, $db_id, $db_hash, $db_rol);
 
-        if(mysqli_stmt_fetch($stmt) && password_verify($contraseña, $hash)){
-            $_SESSION['usuario'] = $usuario;
-            $_SESSION['id'] = $id;
-            $_SESSION['rol'] = $rol; 
+            if(mysqli_stmt_fetch($stmt)){
+                // Verificamos si la clave coincide
+                if(password_verify($pass_post, $db_hash)){
+                    $_SESSION['usuario'] = $usuario;
+                    $_SESSION['id'] = $db_id;
+                    $_SESSION['rol'] = $db_rol; 
 
-            if ($rol == "entrenador") {
-                header("location: panel_entrenador.php");
+                    if ($db_rol == "entrenador") {
+                        header("Location: panel_entrenador.php");
+                    } else {
+                        header("Location: index.php");
+                    }
+                    exit();
+                } else {
+                    $mensaje = "Contraseña incorrecta.";
+                }
             } else {
-                header("location: index.php");
+                $mensaje = "El usuario no existe.";
             }
-            exit();
+            mysqli_stmt_close($stmt);
         } else {
-            $mensaje = "Usuario o contraseña incorrectos!!";
+            die("Error en la consulta: " . mysqli_error($conn));
         }
     }
 ?>
